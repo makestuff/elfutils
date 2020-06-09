@@ -3671,3 +3671,4 @@ testrun_compare ${abs_builddir}/addrcfi -e testfile-x32 0x00400390 <<\EOF
 	control reg66 (%fsw): undefined
 handle_cfi no CFI (.debug_frame): no error
 EOF
+

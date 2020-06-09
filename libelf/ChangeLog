@@ -1,3 +1,131 @@
+2019-06-18  Mark Wielaard  <mark@klomp.org>
+
+	* common.h (allocate_elf): Use int64_t instead of off_t for offset.
+	* elf32_newphdr.c (newphdr): Document why Elf32/64_Word is correct.
+	* elf32_updatefile.c (fill): Use int64_t instead of off_t for pos.
+	(updatefile): Define last_offset, shdr_offset and scn_start as
+	int64_t instead of off_t.
+	* elf32_updatenull.c: Define Elf32_SizeWord and Elf64_SizeWord.
+	(updatenull_wrlock): Return int64_t instead of off_t. Define size,
+	sh_entsize, sh_align and sh_size as SizeWords. Define offset as
+	int64_t.  Cast data->d_off to SizeWord instead of GElf_Word. Drop
+	size GElf_Word cast. Cast offset to SizeWord instead of GElf_Word
+	when comparing with sh_size.
+	* elf_begin.c (get_shnum): Define offset as int64_t instead of
+	off_t. Document why use GElf_Word is correct.
+	(file_read_elf): Define offset as int64_t instead of off_t.
+	(__libelf_read_mmaped_file): Likewise.
+	(read_unmmaped_file): Likewise.
+	(read_file): Likewise.
+	* elf_getaroff.c (elf_getaroff): Return int64_t.
+	* elf_getbase.c (elf_getbase): Likewise.
+	* elf_getdata_rawchunk.c (elf_getdata_rawchunk): Define offset as
+	int64_t instead of off_t.
+	* elf_update.c (write_file): Return int64_t instead of off_t,
+	define size as int64_t instead of off_t.
+	(elf_update): Likewise.
+	* libelfP.h (struct Elf): Define start_offset, sizestr_offset and
+	offset as int64_t.
+	(__libelf_read_mmaped_file): Define offset as int64_t.
+	(__elf32_updatenull_wrlock): Return int64_t.
+	(__elf64_updatenull_wrlock): Return int64_t.
+
+2019-05-12  Mark Wielaard  <mark@klomp.org>
+
+	* elf32_updatenull.c (updatenull_wrlock): Mark shdr_flags dirty if
+	either offset or size changed.
+
+2019-05-01  Mark Wielaard  <mark@klomp.org>
+
+	* gelf_getnote.c (gelf_getnote): Check n_namesz doesn't overflow
+	offset.
+
+2019-04-30  Mark Wielaard  <mark@klomp.org>
+
+	* note_xlate.h (elf_cvt_note): Indicate we only translated the note
+	header if we ran out of data by updating len, src and dest.
+
+2019-04-01  Mao Han  <han_mao@c-sky.com>
+
+	* elf.h: Update from glibc.
+
+2019-03-07  Mark Wielaard  <mark@klomp.org>
+
+	* elf32_updatefile.c (updatemmap): Use posix_memalign instead of
+	aligned_alloc.
+
+2019-03-06  Mark Wielaard  <mark@klomp.org>
+
+	* elf32_updatefile.c (updatemmap): Free scns before returning
+	allocation failure.
+
+2019-02-24  Mark Wielaard  <mark@klomp.org>
+
+	* gelf_xlate.c (__elf_xfctstof): Remove alias.
+	* libelfP.h (__elf_xfctstof): Remove definition.
+
+2019-02-24  Mark Wielaard  <mark@klomp.org>
+
+	* elf32_fsize.c (local_strong_alias): Remove definition.
+	(msize): Remove alias.
+	* libelfP.h (__elf32_msize): Remove definition.
+	(__elf64_msize): Likewise.
+
+2019-02-21  Mark Wielaard  <mark@klomp.org>
+
+	* common.h (determine_kind): Only accept EV_CURRENT.
+	* elf32_fsize.c (fsize): Just check version is EV_CURRENT.
+	Use __libelf_type_size without version dimension.
+	* elf32_updatefile.c (updatemmap): Define fctp from __elf_xfctstom
+	without version dimension.
+	(updatefile): Likewise.
+	* elf32_updatenull.c (default_ehdr): Check e_version is EV_CURRENT.
+	(updatenull_wrlock): Check d_version is EV_CURRENT.
+	(elf32_xlatetof): Likewise. And get recsize without version
+	dimension from __elf_xfctstom.
+	(elf32_xlatetom): Likewise.
+	* elf_begin.c (elf_begin): Check __libelf_version is EV_CURRENT.
+	* elf_compress.c (__libelf_reset_rawdata): Set d_version to
+	EV_CURRENT.
+	* elf_getdata.c (shtype_map): Remove version dimension.
+	(__libelf_type_aligns): Likewise.
+	(__libelf_data_type): Use shtype_map without version dimension.
+	(convert_data): Remove unused version argument. Get fp from
+	__elf_xfctstom without version dimensions.
+	(__libelf_set_data_list_rdlock): Call convert_data without version.
+	* elf_getdata_rawchunk.c (elf_getdata_rawchunk): Call __elfcfctstom
+	conversion function without version dimensions. Set d_version to
+	EV_CURRENT.
+	* elf_newdata.c (elf_newdata): Set d_version to EV_CURRENT.
+	* elf_version.c (__libelf_version_initialized): Removed.
+	(__libelf_version): Initialized to EV_NONE.
+	(elf_version): Always return EV_CURRENT for EV_NONE version.
+	Only accept (and return) EV_CURRENT as version.
+	* gelf_fsize.c (__libelf_type_sizes): Remove version dimension.
+	(gelf_fsize): Only accept EV_CURRENT as version.
+	Use __libelf_type_sizes without version dimension.
+	* gelf_xlate.c (__elf_xftstom): Remove version dimensions.
+	* libelfP.h (__elf_xfctstom): Defined without version dimensions.
+	(__elf_xfctstof): Likewise.
+	(__libelf_type_sizes): Define without version dimension.
+	(elf_typesize): Define using __libelf_type_sizes without version
+	dimension.
+	(__libelf_version_initialized): Remove definition.
+	(__libelf_version): Add definition.
+	(LIBELF_EV_IDX): Removed define.
+	(__libelf_type_aligns): Remove version dimension.
+	* nlist.c (nlist): Call elf_version unconditionally.
+
+2019-02-19  Mark Wielaard  <mark@klomp.org>
+
+	* elf_compress.c (do_deflate_cleanup): Remove ei_data argument,
+	check cdatap is not NULL before calling free.
+	(deflate_cleanup): Add cdata as argument.
+	(__libelf_compress): Also check whether the d_size is not zero
+	before converting data. Call deflate_cleanup with an extra
+	argument depending on whether there is converted data to free.
+	Always allocate allocate at least one byte for buf_out.
+
 2019-02-14  Mark Wielaard  <mark@klomp.org>
 
 	* elf_begin.c (read_long_names): Make sure ar_size is properly

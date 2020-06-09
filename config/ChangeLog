@@ -1,3 +1,12 @@
+2019-08-13  Mark Wielaard  <mark@klomp.org>
+
+	* Makefile.am (elfutils.spec.in): Use git --get user.name and
+	user.email.
+
+2019-04-15  Mark Wielaard  <mark@klomp.org>
+
+	* upload-release.sh: Add git tag --verify.
+
 2019-02-14  Mark Wielaard  <mark@klomp.org>
 
 	* elfutils.spec.in: Update for 0.176.

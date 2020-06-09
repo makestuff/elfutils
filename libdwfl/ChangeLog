@@ -1,3 +1,36 @@
+2019-08-12  Mark Wielaard  <mark@klomp.org>
+
+	* gzip.c (open_stream): Return DWFL_E_ERRNO on bad file operation.
+	* open.c (libdw_open_elf): New argument bad_elf_ok. Check it and
+	return DWFL_E_NOERROR in case it is set and error was DWFL_E_BADELF.
+	(__libdw_open_file): Call libdw_open_elf with bad_elf_ok false.
+	(__libdw_open_elf): Call libdw_open_elf with bad_elf_ok true.
+
+2019-08-05  Omar Sandoval  <osandov@fb.com>
+
+	* dwfl_segment_report_module.c (dwfl_segment_report_module): Assign
+	mod->main.fd.
+
+2019-04-28  Mark Wielaard  <mark@klomp.org>
+
+	* frame_unwind.c (expr_eval): Make sure we left shift a unsigned
+	64bit value.
+
+2019-04-28  Mark Wielaard  <mark@klomp.org>
+
+	* cu.c (addrarange): Only call realloc when naranges is not zero.
+
+2019-03-27  Mark Wielaard  <mark@klomp.org>
+
+	* dwfl_segment_report_module.c (dwfl_segment_report_module): Check
+	ph_buffer_size vs xlatefrom.d_size after read_portion call.
+
+2019-02-24  Mark Wielaard  <mark@klomp.org>
+
+	* linux-kernel-modules.c (intuit_kernel_bounds): Init *notes before
+	fopen.
+	(dwfl_linux_kernel_report_kernel): Remove fake note init empty asm.
+
 2019-01-25  Yonghong Song  <yhs@fb.com>
 
 	* linux-proc-maps.c (proc_maps_report): Use PRIu64, not PRIi64, to

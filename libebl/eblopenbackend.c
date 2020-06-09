@@ -143,6 +143,7 @@ static const struct
   { bpf_init, "elf_bpf", "bpf", 3, EM_BPF, 0, 0 },
   { NULL, "elf_riscv", "riscv", 5, EM_RISCV, ELFCLASS64, ELFDATA2LSB },
   { NULL, "elf_riscv", "riscv", 5, EM_RISCV, ELFCLASS32, ELFDATA2LSB },
+  { NULL, "elf_csky", "csky", 4, EM_CSKY, ELFCLASS32, ELFDATA2LSB },
 };
 #define nmachines (sizeof (machines) / sizeof (machines[0]))
 
@@ -259,7 +260,6 @@ fill_defaults (Ebl *result)
   result->sysvhash_entrysize = sizeof (Elf32_Word);
 }
 
-
 /* Find an appropriate backend for the file associated with ELF.  */
 static Ebl *
 openbackend (Elf *elf, const char *emulation, GElf_Half machine)
@@ -324,7 +324,16 @@ openbackend (Elf *elf, const char *emulation, GElf_Half machine)
 #ifndef LIBEBL_SUBDIR
 # define LIBEBL_SUBDIR PACKAGE
 #endif
-#define ORIGINDIR "$ORIGIN/../$LIB/" LIBEBL_SUBDIR "/"
+
+/* This works if libebl has been staticly linked into a binary.
+   It might also work for shared libraries when installed in
+   ${prefix}/lib/ or ${prefix}/lib64/, but not for multiarch
+   library installs like ${prefix}/lib/i386-linux-gnu/  */
+#define BINORIGINDIR "$ORIGIN/../$LIB/" LIBEBL_SUBDIR "/"
+
+/* This works if libebl has been linked into a shared library,
+   just look in the subdir.  */
+#define LIBORIGINDIR "$ORIGIN/" LIBEBL_SUBDIR "/"
 
 	ebl_bhinit_t initp = machines[cnt].initptr;
 	if (1)
@@ -340,7 +349,6 @@ openbackend (Elf *elf, const char *emulation, GElf_Half machine)
 		result->elf = elf;
 
 		/* A few entries are mandatory.  */
-		assert (result->name != NULL);
 		assert (result->destr != NULL);
 
 		return result;
@@ -351,7 +359,6 @@ openbackend (Elf *elf, const char *emulation, GElf_Half machine)
 	   Return that information.  */
 	result->dlhandle = NULL;
 	result->elf = elf;
-	result->name = machines[cnt].prefix;
 	fill_defaults (result);
 
 	return result;
@@ -361,7 +368,6 @@ openbackend (Elf *elf, const char *emulation, GElf_Half machine)
   result->dlhandle = NULL;
   result->elf = elf;
   result->emulation = "<unknown>";
-  result->name = "<unknown>";
   fill_defaults (result);
 
   return result;
