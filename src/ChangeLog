@@ -1,3 +1,77 @@
+2019-11-26  Mark Wielaard  <mark@klomp.org>
+
+	* Makefile.am (BUILD_STATIC): Add libraries needed for libdw.
+
+2019-10-26  Mark Wielaard  <mark@klomp.org>
+
+	* unstrip.c (collect_symbols): Check symbol strings are
+	terminated.
+
+2019-10-18  Mark Wielaard  <mark@klomp.org>
+
+	* unstrip.c (adjust_relocs): Set versym data d_size to the actual
+	size allocated.
+
+2019-10-20  Mark Wielaard  <mark@klomp.org>
+
+	* unstrip.c (copy_elided_sections): Set and check max_off.
+
+2019-10-21  Mark Wielaard  <mark@klomp.org>
+
+	* unstrip.c (adjust_relocs): Add map_size argument and check ndx
+	against it.
+	(adjust_all_relocs): Add map_size argument and pass it to
+	adjust_relocs.
+	(add_new_section_symbols): Call adjust_all_relocs with symndx_map
+	size.
+	(collect)symbols): Check sym and string data can be found.
+	(compare_symbols_output): Call error when (different) symbols are
+	equal.
+	(new_shstrtab): Make unstripped_strent array one larger. Check
+	stripped_shnum isn't zero.
+	(copy_elided_sections): Add ndx_sec_num as size of ndx_section
+	array. Check sh_link and sh_info are not larger than ndx_sec_num.
+	Allocate symbols and symndx_map arrays on heap, not stack. Pass
+	map sizes to adjust_all_relocs.
+
+2019-09-28  Dmitry V. Levin  <ldv@altlinux.org>
+
+	* elflint.c (main): When an input file cannot be opened,
+	include its name into the error diagnostics.
+	* readelf.c (main): Likewise.
+
+2019-09-02  Mark Wielaard  <mark@klomp.org>
+
+	* readelf.c (PRINT_DYNSYM_TABLE): New argp key value.
+	(argp_opt): Add syn-sym.
+	(print_dynsym_table): New static bool.
+	(parse_opt): Handle PRINT_DYNSYM_TABLE.
+	(process_elf_file): Check print_dynsym_table.
+
+2019-08-27  Mark Wielaard  <mark@klomp.org>
+
+	* readelf.c (for_each_section_argument): Call (*dump) also for
+	section numbers.
+
+2019-08-26  Mark Wielaard  <mark@klomp.org>
+
+	* nm.c (show_symbols): Remember nentries_orig and check before
+	freeing sym_mem.
+
+2019-07-05  Omar Sandoval  <osandov@fb.com>
+
+	* Makefile.am: Remove -ldl.
+	(elflint_LDADD): Add $(libdw).
+	(elfcmp_LDADD): Add $(libdw).
+	(objdump_LDADD): Add $(libdw).
+
+2019-08-26  Mark Wielaard  <mark@klomp.org>
+
+	* readelf (options): Add OPTION_ARG_OPTIONAL "SECTION" for notes.
+	(notes_section): New global variable.
+	(parse_opt): Set notes_section.
+	(handle_notes): Check if notes_section is set.
+
 2019-07-26  Florian Weimer  <fweimer@redhat.com>
 	    Mark Wielaard  <mark@klomp.org>
 

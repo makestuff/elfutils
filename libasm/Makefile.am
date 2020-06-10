@@ -38,7 +38,7 @@ noinst_LIBRARIES = libasm_pic.a
 noinst_PROGRAMS = $(noinst_LIBRARIES:_pic.a=.so)
 pkginclude_HEADERS = libasm.h
 
-libasm_a_CFLAGS = -fPIC -fvisibility=hidden $(AM_CFLAGS)
+libasm_a_CFLAGS = -fPIC $(AM_CFLAGS)
 libasm_a_SOURCES = asm_begin.c asm_abort.c asm_end.c asm_error.c \
 		   asm_getelf.c asm_newscn.c asm_newscn_ingrp.c \
 		   asm_newsubscn.c asm_newsym.c asm_newcomsym.c \
@@ -56,7 +56,7 @@ libasm_a_SOURCES = asm_begin.c asm_abort.c asm_end.c asm_error.c \
 libasm_pic_a_SOURCES =
 am_libasm_pic_a_OBJECTS = $(libasm_a_SOURCES:.c=.os)
 
-libasm_so_DEPS = ../lib/libeu.a ../libebl/libebl.a ../libelf/libelf.so ../libdw/libdw.so
+libasm_so_DEPS = ../lib/libeu.a ../libebl/libebl_pic.a ../libelf/libelf.so ../libdw/libdw.so
 libasm_so_LDLIBS = $(libasm_so_DEPS)
 if USE_LOCKS
 libasm_so_LDLIBS += -lpthread

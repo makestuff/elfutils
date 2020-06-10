@@ -41,14 +41,14 @@
 #include <system.h>
 #include <libeblP.h>
 
-const char *i386_init (Elf *elf, GElf_Half machine, Ebl *eh, size_t ehlen);
-const char *x86_64_init (Elf *elf, GElf_Half machine, Ebl *eh, size_t ehlen);
-const char *ppc_init (Elf *elf, GElf_Half machine, Ebl *eh, size_t ehlen);
-const char *ppc64_init (Elf *elf, GElf_Half machine, Ebl *eh, size_t ehlen);
-const char *ia64_init (Elf *elf, GElf_Half machine, Ebl *eh, size_t ehlen);
-const char *s390_init (Elf *elf, GElf_Half machine, Ebl *eh, size_t ehlen);
-const char *aarch64_init (Elf *elf, GElf_Half machine, Ebl *eh, size_t ehlen);
-const char *bpf_init (Elf *elf, GElf_Half machine, Ebl *eh, size_t ehlen);
+const char *i386_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
+const char *x86_64_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
+const char *ppc_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
+const char *ppc64_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
+const char *ia64_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
+const char *s390_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
+const char *aarch64_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
+const char *bpf_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
 
 /* This table should contain the complete list of architectures as far
    as the ELF specification is concerned.  */
@@ -56,7 +56,7 @@ const char *bpf_init (Elf *elf, GElf_Half machine, Ebl *eh, size_t ehlen);
    arrays to avoid relocations.  */
 static const struct
 {
-  ebl_bhinit_t initptr;
+  ebl_bhinit_t init;
   const char *emulation;
   const char *prefix;
   int prefix_len;
@@ -321,43 +321,17 @@ openbackend (Elf *elf, const char *emulation, GElf_Half machine)
 	    result->data = elf->state.elf32.ehdr->e_ident[EI_DATA];
 	  }
 
-#ifndef LIBEBL_SUBDIR
-# define LIBEBL_SUBDIR PACKAGE
-#endif
+        if (machines[cnt].init &&
+            machines[cnt].init (elf, machine, result, sizeof(Ebl)))
+          {
+            result->elf = elf;
+            /* A few entries are mandatory.  */
+            assert (result->destr != NULL);
+            return result;
+          }
 
-/* This works if libebl has been staticly linked into a binary.
-   It might also work for shared libraries when installed in
-   ${prefix}/lib/ or ${prefix}/lib64/, but not for multiarch
-   library installs like ${prefix}/lib/i386-linux-gnu/  */
-#define BINORIGINDIR "$ORIGIN/../$LIB/" LIBEBL_SUBDIR "/"
-
-/* This works if libebl has been linked into a shared library,
-   just look in the subdir.  */
-#define LIBORIGINDIR "$ORIGIN/" LIBEBL_SUBDIR "/"
-
-	ebl_bhinit_t initp = machines[cnt].initptr;
-	if (1)
-	  {
-	    static const char version[] = MODVERSION;
-	    const char *modversion;
-	    if (initp != NULL
-		&& (modversion = initp (elf, machine, result, sizeof (Ebl)))
-		&& strcmp (version, modversion) == 0)
-	      {
-		/* We found a module to handle our file.  */
-		result->dlhandle = NULL;
-		result->elf = elf;
-
-		/* A few entries are mandatory.  */
-		assert (result->destr != NULL);
-
-		return result;
-	      }
-	  }
-
-	/* We cannot find a DSO but the emulation/machine ID matches.
+	/* We don't have a backend but the emulation/machine ID matches.
 	   Return that information.  */
-	result->dlhandle = NULL;
 	result->elf = elf;
 	fill_defaults (result);
 
@@ -365,7 +339,6 @@ openbackend (Elf *elf, const char *emulation, GElf_Half machine)
       }
 
   /* Nothing matched.  We use only the default callbacks.   */
-  result->dlhandle = NULL;
   result->elf = elf;
   result->emulation = "<unknown>";
   fill_defaults (result);
