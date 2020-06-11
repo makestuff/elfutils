@@ -41,14 +41,14 @@
 #include <system.h>
 #include <libeblP.h>
 
-const char *i386_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
-const char *x86_64_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
-const char *ppc_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
-const char *ppc64_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
-const char *ia64_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
-const char *s390_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
-const char *aarch64_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
-const char *bpf_init (Elf *, GElf_Half, Ebl *eh, size_t ehlen);
+Ebl *i386_init (Elf *, GElf_Half, Ebl *);
+Ebl *x86_64_init (Elf *, GElf_Half, Ebl *);
+Ebl *ia64_init (Elf *, GElf_Half, Ebl *);
+Ebl *aarch64_init (Elf *, GElf_Half, Ebl *);
+Ebl *ppc_init (Elf *, GElf_Half, Ebl *);
+Ebl *ppc64_init (Elf *, GElf_Half, Ebl *);
+Ebl *s390_init (Elf *, GElf_Half, Ebl *);
+Ebl *bpf_init (Elf *, GElf_Half, Ebl *);
 
 /* This table should contain the complete list of architectures as far
    as the ELF specification is concerned.  */
@@ -322,7 +322,7 @@ openbackend (Elf *elf, const char *emulation, GElf_Half machine)
 	  }
 
         if (machines[cnt].init &&
-            machines[cnt].init (elf, machine, result, sizeof(Ebl)))
+            machines[cnt].init (elf, machine, result))
           {
             result->elf = elf;
             /* A few entries are mandatory.  */
@@ -613,7 +613,9 @@ default_debugscn_p (const char *name)
   for (size_t cnt = 0; cnt < ndwarf_scn_names; ++cnt)
     if (strcmp (name, dwarf_scn_names[cnt]) == 0
 	|| (strncmp (name, ".zdebug", strlen (".zdebug")) == 0
-	    && strcmp (&name[2], &dwarf_scn_names[cnt][1]) == 0))
+	    && strcmp (&name[2], &dwarf_scn_names[cnt][1]) == 0)
+	|| (strncmp (name, ".gnu.debuglto_", strlen (".gnu.debuglto_")) == 0
+	    && strcmp (&name[14], dwarf_scn_names[cnt]) == 0))
       return true;
 
   return false;

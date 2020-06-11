@@ -50,7 +50,8 @@ check_PROGRAMS = arextract arsymtest newfile saridx scnnames sectiondump \
 		  test-flag-nobits dwarf-getstring rerequest_tag \
 		  alldts typeiter typeiter2 low_high_pc \
 		  test-elf_cntl_gelf_getshdr dwflsyms dwfllines \
-		  dwfl-report-elf-align varlocs backtrace backtrace-child \
+		  dwfl-report-elf-align dwfl-report-segment-contiguous \
+		  varlocs backtrace backtrace-child \
 		  backtrace-data backtrace-dwarf debuglink debugaltlink \
 		  buildid deleted deleted-lib.so aggregate_size peel_type \
 		  vdsosyms \
@@ -61,7 +62,8 @@ check_PROGRAMS = arextract arsymtest newfile saridx scnnames sectiondump \
 		  get-units-invalid get-units-split attr-integrate-skel \
 		  all-dwarf-ranges unit-info next_cfi \
 		  elfcopy addsections xlate_notes elfrdwrnop \
-		  dwelf_elf_e_machine_string
+		  dwelf_elf_e_machine_string \
+		  getphdrnum
 
 asm_TESTS = asm-tst1 asm-tst2 asm-tst3 asm-tst4 asm-tst5 \
 	    asm-tst6 asm-tst7 asm-tst8 asm-tst9
@@ -77,6 +79,14 @@ backtrace-child-biarch$(EXEEXT): backtrace-child.c
 		     $(AM_CFLAGS) $(CFLAGS) $(backtrace_child_CFLAGS) \
 		     $(AM_LDFLAGS) $(LDFLAGS) $(backtrace_child_LDFLAGS) \
 		     -o $@ $<
+
+# test_nlist checks its own symbol table, and expects various symbols
+# to be in the order as specified in the source file. Explicitly set
+# minimal CFLAGS
+test-nlist$(EXEEXT): test-nlist.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	  $(AM_CPPFLAGS) $(CPPFLAGS) \
+	  $(test_nlist_CFLAGS) $(test_nlist_LDADD) -o $@ $<
 
 TESTS = run-arextract.sh run-arsymtest.sh run-ar.sh newfile test-nlist \
 	update1 update2 update3 update4 \
@@ -99,7 +109,7 @@ TESTS = run-arextract.sh run-arsymtest.sh run-ar.sh newfile test-nlist \
 	run-ranlib-test2.sh run-ranlib-test3.sh run-ranlib-test4.sh \
 	run-addrscopes.sh run-strings-test.sh run-funcscopes.sh \
 	run-find-prologues.sh run-allregs.sh run-addrcfi.sh \
-	run-dwarfcfi.sh \
+	run-dwarfcfi.sh run-nm-syms.sh \
 	run-nm-self.sh run-readelf-self.sh run-readelf-info-plus.sh \
 	run-readelf-compressed.sh \
 	run-readelf-const-values.sh \
@@ -112,7 +122,7 @@ TESTS = run-arextract.sh run-arsymtest.sh run-ar.sh newfile test-nlist \
 	run-native-test.sh run-bug1-test.sh \
 	run-debuglink.sh run-debugaltlink.sh run-buildid.sh \
 	dwfl-bug-addr-overflow run-addrname-test.sh \
-	dwfl-bug-fd-leak dwfl-bug-report \
+	dwfl-bug-fd-leak dwfl-bug-report dwfl-report-segment-contiguous \
 	run-dwfl-bug-offline-rel.sh run-dwfl-addr-sect.sh \
 	run-disasm-x86.sh run-disasm-x86-64.sh \
 	run-early-offscn.sh run-dwarf-getmacros.sh run-dwarf-ranges.sh \
@@ -164,7 +174,9 @@ TESTS = run-arextract.sh run-arsymtest.sh run-ar.sh newfile test-nlist \
 	run-strip-version.sh run-xlate-note.sh \
 	run-readelf-discr.sh \
 	run-dwelf_elf_e_machine_string.sh \
-	run-elfclassify.sh run-elfclassify-self.sh
+	run-elfclassify.sh run-elfclassify-self.sh \
+	run-pt_gnu_prop-tests.sh \
+	run-getphdrnum.sh
 
 if !BIARCH
 export ELFUTILS_DISABLE_BIARCH = 1
@@ -204,6 +216,8 @@ EXTRA_DIST = run-arextract.sh run-arsymtest.sh run-ar.sh \
 	     testfile9.bz2 testfile10.bz2 testfile11.bz2 testfile12.bz2 \
 	     testfile13.bz2 run-strip-test3.sh run-allfcts.sh \
 	     testfile_class_func.bz2 testfile_nested_funcs.bz2 \
+	     testfile-lto-gcc10.bz2 \
+	     testfile-lto-gcc9.bz2 testfile-lto-gcc8.bz2 \
 	     run-line2addr.sh run-elflint-test.sh testfile14.bz2 \
 	     run-strip-test4.sh run-strip-test5.sh run-strip-test6.sh \
 	     run-strip-test7.sh run-strip-test8.sh run-strip-groups.sh \
@@ -227,6 +241,7 @@ EXTRA_DIST = run-arextract.sh run-arsymtest.sh run-ar.sh \
 	     run-elflint-self.sh run-ranlib-test.sh run-ranlib-test2.sh \
 	     run-ranlib-test3.sh run-ranlib-test4.sh \
 	     run-addrscopes.sh run-strings-test.sh run-funcscopes.sh \
+	     run-nm-syms.sh testfilesyms32.bz2 testfilesyms64.bz2 \
 	     run-nm-self.sh run-readelf-self.sh run-readelf-info-plus.sh \
 	     run-readelf-compressed.sh \
 	     run-readelf-const-values.sh testfile-const-values.debug.bz2 \
@@ -451,6 +466,12 @@ EXTRA_DIST = run-arextract.sh run-arsymtest.sh run-ar.sh \
 	     debuginfod-rpms/fedora30/hello2-debugsource-1.0-2.x86_64.rpm \
 	     debuginfod-rpms/fedora30/hello2-two-1.0-2.x86_64.rpm \
 	     debuginfod-rpms/fedora30/hello2-two-debuginfo-1.0-2.x86_64.rpm \
+	     debuginfod-rpms/fedora31/hello3-1.0-2.src.rpm \
+	     debuginfod-rpms/fedora31/hello3-1.0-2.x86_64.rpm \
+	     debuginfod-rpms/fedora31/hello3-debuginfo-1.0-2.x86_64.rpm \
+	     debuginfod-rpms/fedora31/hello3-debugsource-1.0-2.x86_64.rpm \
+	     debuginfod-rpms/fedora31/hello3-two-1.0-2.x86_64.rpm \
+	     debuginfod-rpms/fedora31/hello3-two-debuginfo-1.0-2.x86_64.rpm \
 	     debuginfod-rpms/hello2.spec. \
 	     debuginfod-rpms/rhel6/hello2-1.0-2.i686.rpm \
 	     debuginfod-rpms/rhel6/hello2-1.0-2.src.rpm \
@@ -459,8 +480,21 @@ EXTRA_DIST = run-arextract.sh run-arsymtest.sh run-ar.sh \
 	     debuginfod-rpms/rhel7/hello2-1.0-2.src.rpm \
 	     debuginfod-rpms/rhel7/hello2-1.0-2.x86_64.rpm \
 	     debuginfod-rpms/rhel7/hello2-debuginfo-1.0-2.x86_64.rpm \
-	     debuginfod-rpms/rhel7/hello2-two-1.0-2.x86_64.rpm
-
+	     debuginfod-rpms/rhel7/hello2-two-1.0-2.x86_64.rpm \
+	     debuginfod-rpms/rhel7/hello2-two-1.0-2.x86_64.rpm \
+	     debuginfod-debs/hithere-dbgsym_1.0-1_amd64.ddeb \
+	     debuginfod-debs/hithere_1.0-1.debian.tar.xz \
+	     debuginfod-debs/hithere_1.0-1.dsc \
+	     debuginfod-debs/hithere_1.0-1_amd64.deb \
+	     debuginfod-debs/hithere_1.0.orig.tar.gz \
+	     debuginfod-tars/hello-1-1-x86_64.pkg.tar.xz \
+	     debuginfod-tars/hello-debug-1-1-x86_64.pkg.tar.bz2 \
+	     debuginfod-tars/pacman-sources/PKGBUILD \
+	     debuginfod-tars/pacman-sources/README.md \
+	     debuginfod-tars/pacman-sources/hello.c \
+	     run-pt_gnu_prop-tests.sh \
+	     testfile_pt_gnu_prop.bz2 testfile_pt_gnu_prop32.bz2 \
+	     run-getphdrnum.sh testfile-phdrs.elf.bz2
 
 
 if USE_VALGRIND
@@ -479,6 +513,7 @@ installed_TESTS_ENVIRONMENT = libdir=$(DESTDIR)$(libdir); \
 			      export abs_top_builddir; \
 			      export libdir; export bindir; \
 			      export LC_ALL; export LANG; export VALGRIND_CMD; \
+			      unset DEBUGINFOD_URLS; \
 			      NM=$(NM); export NM;
 installed_LOG_COMPILER = $(abs_srcdir)/test-wrapper.sh \
 			 installed $(tests_rpath) \
@@ -493,6 +528,7 @@ TESTS_ENVIRONMENT = LC_ALL=C; LANG=C; VALGRIND_CMD=$(valgrind_cmd); \
 		    export abs_srcdir; export abs_builddir; \
 		    export abs_top_builddir; \
 		    export LC_ALL; export LANG; export VALGRIND_CMD; \
+		    unset DEBUGINFOD_URLS; \
 		    NM=$(NM); export NM;
 LOG_COMPILER = $(abs_srcdir)/test-wrapper.sh \
 	       $(abs_top_builddir)/libdw:$(abs_top_builddir)/backends:$(abs_top_builddir)/libelf:$(abs_top_builddir)/libasm:$(abs_top_builddir)/debuginfod
@@ -530,6 +566,7 @@ scnnames_LDADD = $(libelf)
 sectiondump_LDADD = $(libelf)
 showptable_LDADD = $(libelf)
 hash_LDADD = $(libelf)
+test_nlist_CFLAGS =-g -O0
 test_nlist_LDADD = $(libelf)
 msg_tst_LDADD = $(libelf)
 newscn_LDADD = $(libelf)
@@ -588,6 +625,7 @@ test_elf_cntl_gelf_getshdr_LDADD = $(libelf)
 dwflsyms_LDADD = $(libdw) $(libelf) $(argp_LDADD)
 dwfllines_LDADD = $(libdw) $(libelf) $(argp_LDADD)
 dwfl_report_elf_align_LDADD = $(libdw)
+dwfl_report_segment_contiguous_LDADD = $(libdw) $(libebl) $(libelf)
 varlocs_LDADD = $(libdw) $(libelf) $(argp_LDADD)
 backtrace_LDADD = $(libdw) $(libelf) $(argp_LDADD)
 # backtrace-child-biarch also uses those *_CFLAGS and *_LDLAGS variables:
@@ -636,6 +674,7 @@ debuginfod_build_id_find_LDADD = $(libelf) $(libdw)
 xlate_notes_LDADD = $(libelf)
 elfrdwrnop_LDADD = $(libelf)
 dwelf_elf_e_machine_string_LDADD = $(libelf) $(libdw)
+getphdrnum_LDADD = $(libelf) $(libdw)
 
 # We want to test the libelf header against the system elf.h header.
 # Don't include any -I CPPFLAGS. Except when we install our own elf.h.

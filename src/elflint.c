@@ -658,6 +658,10 @@ section [%2d] '%s': symbol table cannot have more than one extended index sectio
     ERROR (gettext ("\
 section [%2u] '%s': entry size is does not match ElfXX_Sym\n"),
 	   idx, section_name (ebl, idx));
+  else if (shdr->sh_info > shdr->sh_size / sh_entsize)
+    ERROR (gettext ("\
+section [%2u] '%s': number of local entries in 'st_info' larger than table size\n"),
+	   idx, section_name (ebl, idx));
 
   /* Test the zeroth entry.  */
   GElf_Sym sym_mem;
@@ -3917,6 +3921,11 @@ section [%2zu] '%s': size not multiple of entry size\n"),
 	  GElf_Xword sh_flags = shdr->sh_flags & ~(GElf_Xword) ALL_SH_FLAGS;
 	  if (sh_flags & SHF_MASKPROC)
 	    {
+	      /* Strictly speaking SHF_EXCLUDE is a processor specific
+		 section flag, but it is used generically in the GNU
+		 toolchain.  */
+	      if (gnuld)
+		sh_flags &= ~(GElf_Xword) SHF_EXCLUDE;
 	      if (!ebl_machine_section_flag_check (ebl,
 						   sh_flags & SHF_MASKPROC))
 		ERROR (gettext ("section [%2zu] '%s'"
@@ -4485,6 +4494,7 @@ only executables, shared objects, and core files can have program headers\n"));
 
       if (phdr->p_type >= PT_NUM && phdr->p_type != PT_GNU_EH_FRAME
 	  && phdr->p_type != PT_GNU_STACK && phdr->p_type != PT_GNU_RELRO
+	  && phdr->p_type != PT_GNU_PROPERTY
 	  /* Check for a known machine-specific type.  */
 	  && ebl_segment_type_name (ebl, phdr->p_type, NULL, 0) == NULL)
 	ERROR (gettext ("\
@@ -4761,7 +4771,14 @@ process_elf_file (Elf *elf, const char *prefix, const char *suffix,
   ebl = ebl_openbackend (elf);
   /* If there is no appropriate backend library we cannot test
      architecture and OS specific features.  Any encountered extension
-     is an error.  */
+     is an error.  Often we'll get a "dummy" ebl, except if something
+     really bad happen, like a totally corrupted ELF file or out of
+     memory situation.  */
+  if (ebl == NULL)
+    {
+      ERROR (gettext ("cannot create backend for ELF file\n"));
+      return;
+    }
 
   /* Go straight by the gABI, check all the parts in turn.  */
   check_elf_header (ebl, ehdr, size);

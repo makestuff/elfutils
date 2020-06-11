@@ -1,3 +1,47 @@
+2020-05-09  Mark Wielaard  <mark@klomp.org>
+
+	* find-debuginfo.c (dwfl_standard_find_debuginfo): Return failure
+	when mod is NULL.
+
+2020-05-08  Mark Wielaard  <mark@klomp.org>
+
+	* libdwfl/core-file.c (dwfl_core_file_report): Keep track of
+	new bool cleanup_user_core and cleanup dwfl->user_core in error
+	case.
+
+2020-04-30  Mark Wielaard  <mark@klomp.org>
+
+	* find-debuginfo.c (dwfl_standard_find_debuginfo): When mod->dw
+	is already set then try fetching debugaltlink.
+
+2020-04-25  Mark Wielaard  <mark@klomp.org>
+
+	* gzip.c (open_stream): Return DWFL_E_NOMEM instead of calling
+	zlib_fail.
+
+2020-04-16  Mark Wielaard  <mark@klomp.org>
+
+	* find-debuginfo.c (dwfl_standard_find_debuginfo): Initialize bits
+	to NULL.
+
+2020-01-24  Mark Wielaard  <mark@klomp.org>
+
+	* linux-kernel-modules.c (find_kernel_elf): Check release isn't NULL.
+	(report_kernel): Check release and *release aren't NULL.
+	(report_kernel_archive): Likewise.
+
+2019-12-11  Omar Sandoval  <osandov@fb.com>
+
+	* libdwflP.h (Dwfl_Module): Remove coalescing state.
+	Rename lookup_tail_ndx to next_segndx.
+	* segment.c (dwfl_report_segment): Remove coalescing logic.
+	* libdwfl.h (dwfl_report_segment): Document that IDENT is ignored.
+
+2019-12-05  Mark Wielaard  <mark@klomp.org>
+
+	* linux-kernel-modules.c (find_kernel_elf): Also try to find
+	vmlinux image.
+
 2019-10-28  Aaron Merey  <amerey@redhat.com>
 
 	* dwfl_build_id_find_elf.c (dwfl_build_id_find_elf): Call debuginfod

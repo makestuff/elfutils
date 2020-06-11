@@ -1,3 +1,31 @@
+2020-06-04  Mark Wielaard  <mark@klomp.org>
+
+	* elf.h: Update from glibc.
+
+2020-05-08  Mark Wielaard  <mark@klomp.org>
+
+	* elf_strptr.c (elf_strptr): Check shdr is not NULL.
+
+2020-05-08  Mark Wielaard  <mark@klomp.org>
+
+	* elf_getdata.c (__libelf_set_rawdata_wrlock): Check
+	__gelf_getehdr_rdlock return value.
+
+2020-04-25  Mark Wielaard  <mark@klomp.org>
+
+	* elf_compress.c (__libelf_compress): Remove free (out_buf).
+
+2020-03-18  Omar Sandoval  <osandov@fb.com>
+
+	* elf_getphdrnum.c (__elf_getphdrnum_rdlock): Call
+	__elf{32,64}_getshdr_rdlock if the shdr is not cached.
+
+2019-03-20  Matthias Maennich  <maennich@google.com>
+
+	* elf_compress.c (__libelf_compress): Always call deflate_cleanup
+	in failure path. Call deflateEnd only once.
+	(__libelf_decompress): Call inflateEnd only once.
+
 2019-06-18  Mark Wielaard  <mark@klomp.org>
 
 	* common.h (allocate_elf): Use int64_t instead of off_t for offset.
