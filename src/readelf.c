@@ -4993,17 +4993,19 @@ skip_listptr_hole (struct listptr_table *table, size_t *idxp,
 }
 
 static Dwarf_Off
-next_listptr_offset (struct listptr_table *table, size_t idx)
+next_listptr_offset (struct listptr_table *table, size_t *idxp, Dwarf_Off off)
 {
   /* Note that multiple attributes could in theory point to the same loclist
      offset, so make sure we pick one that is bigger than the current one.
      The table is sorted on offset.  */
-  Dwarf_Off offset = table->table[idx].offset;
-  while (++idx < table->n)
+  if (*idxp < table->n)
     {
-      Dwarf_Off next = table->table[idx].offset;
-      if (next > offset)
-	return next;
+      while (++*idxp < table->n)
+	{
+	  Dwarf_Off next = table->table[*idxp].offset;
+	  if (next > off)
+	    return next;
+	}
     }
   return 0;
 }
@@ -5036,9 +5038,32 @@ listptr_cu (struct listptr_table *table, size_t *idxp,
       struct listptr *p = &table->table[*idxp];
       *base = listptr_base (p);
       *cu = p->cu;
-      ++*idxp;
       return true;
     }
+
+  return false;
+}
+
+/* Returns the next index with the current CU for the given attribute.
+   If there is none false is returned, otherwise true.  Assumes the
+   table has been sorted.  */
+static bool
+listptr_attr (struct listptr_table *table, size_t idxp,
+	      Dwarf_Off offset, unsigned int attr)
+{
+  struct listptr *listptr;
+  do
+    {
+      listptr = get_listptr (table, idxp);
+      if (listptr == NULL)
+	return false;
+
+      if (listptr->offset == offset && listptr->attr == attr)
+	return true;
+
+      idxp++;
+    }
+  while (listptr->offset <= offset);
 
   return false;
 }
@@ -6045,10 +6070,16 @@ print_debug_ranges_section (Dwfl_Module *dwflmod,
 
       if (begin == (Dwarf_Addr) -1l) /* Base address entry.  */
 	{
-	  printf (gettext (" [%6tx] base address\n          "), offset);
+	  if (first)
+	    printf (" [%6tx] ", offset);
+	  else
+	    printf ("          ");
+	  puts (gettext ("base address"));
+	  printf ("          ");
 	  print_dwarf_addr (dwflmod, address_size, end, end);
 	  printf ("\n");
 	  base = end;
+	  first = false;
 	}
       else if (begin == 0 && end == 0) /* End of list entry.  */
 	{
@@ -6176,7 +6207,7 @@ print_cfa_program (const unsigned char *readp, const unsigned char *const endp,
 		   int data_align,
 		   unsigned int version, unsigned int ptr_size,
 		   unsigned int encoding,
-		   Dwfl_Module *dwflmod, Ebl *ebl, Dwarf *dbg)
+		   Dwfl_Module *dwflmod, Ebl *ebl, GElf_Ehdr *ehdr, Dwarf *dbg)
 {
   char regnamebuf[REGNAMESZ];
   const char *regname (unsigned int regno)
@@ -6399,8 +6430,11 @@ print_cfa_program (const unsigned char *readp, const unsigned char *const endp,
 	    printf ("     MIPS_advance_loc8 %" PRIu64 " to %#" PRIx64 "\n",
 		    op1, pc += op1 * code_align);
 	    break;
-	  case DW_CFA_GNU_window_save:
-	    puts ("     GNU_window_save");
+	  case DW_CFA_GNU_window_save:  /* DW_CFA_AARCH64_negate_ra_state  */
+	    if (ehdr->e_machine == EM_AARCH64)
+	      puts ("     AARCH64_negate_ra_state");
+	    else
+	      puts ("     GNU_window_save");
 	    break;
 	  case DW_CFA_GNU_args_size:
 	    if ((uint64_t) (endp - readp) < 1)
@@ -6930,7 +6964,7 @@ print_debug_frame_section (Dwfl_Module *dwflmod, Ebl *ebl, GElf_Ehdr *ehdr,
       else
 	print_cfa_program (readp, cieend, vma_base, code_alignment_factor,
 			   data_alignment_factor, version, ptr_size,
-			   fde_encoding, dwflmod, ebl, dbg);
+			   fde_encoding, dwflmod, ebl, ehdr, dbg);
       readp = cieend;
     }
 }
@@ -8642,7 +8676,7 @@ print_debug_line_section (Dwfl_Module *dwflmod, Ebl *ebl, GElf_Ehdr *ehdr,
 		    printf (", ");
 		}
 	      printf ("\n");
-	      if (linep >= lineendp)
+	      if (linep > lineendp)
 		goto invalid_unit;
 	    }
 	}
@@ -8683,6 +8717,12 @@ print_debug_line_section (Dwfl_Module *dwflmod, Ebl *ebl, GElf_Ehdr *ehdr,
 	    goto invalid_unit;
 	  /* Skip the final NUL byte.  */
 	  ++linep;
+	}
+
+      if (linep == lineendp)
+	{
+	  puts (gettext ("\nNo line number statements."));
+	  return;
 	}
 
       puts (gettext ("\nLine number statements:"));
@@ -9156,6 +9196,43 @@ print_debug_loclists_section (Dwfl_Module *dwflmod,
       bool start_of_list = true;
       while (readp < nexthdr)
 	{
+	  Dwarf_Off off = (Dwarf_Off) (readp - (unsigned char *) data->d_buf);
+	  if (listptr_attr (&known_loclistsptr, listptr_idx, off,
+			    DW_AT_GNU_locviews))
+	    {
+	      Dwarf_Off next_off = next_listptr_offset (&known_loclistsptr,
+							&listptr_idx, off);
+	      const unsigned char *locp = readp;
+	      const unsigned char *locendp;
+	      if (next_off == 0
+		  || next_off > (size_t) (nexthdr - ((const unsigned char *)
+						     data->d_buf)))
+		locendp = nexthdr;
+	      else
+		locendp = (const unsigned char *) data->d_buf + next_off;
+
+	      printf ("  Offset: %" PRIx64 ", Index: %" PRIx64 "\n",
+		      (uint64_t) (readp - (unsigned char *) data->d_buf),
+		      (uint64_t) (readp - offset_array_start));
+
+	      while (locp < locendp)
+		{
+		  uint64_t v1, v2;
+		  get_uleb128 (v1, locp, locendp);
+		  if (locp >= locendp)
+		    {
+		      printf (gettext ("    <INVALID DATA>\n"));
+		      break;
+		    }
+		  get_uleb128 (v2, locp, locendp);
+		  printf ("    view pair %" PRId64 ", %" PRId64 "\n", v1, v2);
+		}
+
+	      printf ("\n");
+	      readp = (unsigned char *) locendp;
+	      continue;
+	    }
+
 	  uint8_t kind = *readp++;
 	  uint64_t op1, op2, len;
 
@@ -9487,7 +9564,7 @@ print_debug_loc_section (Dwfl_Module *dwflmod,
       if (attr == DW_AT_GNU_locviews)
 	{
 	  Dwarf_Off next_off = next_listptr_offset (&known_locsptr,
-						    listptr_idx);
+						    &listptr_idx, offset);
 	  const unsigned char *locp = readp;
 	  const unsigned char *locendp;
 	  if (next_off == 0
@@ -9609,10 +9686,16 @@ print_debug_loc_section (Dwfl_Module *dwflmod,
 
       if (begin == (Dwarf_Addr) -1l) /* Base address entry.  */
 	{
-	  printf (gettext (" [%6tx] base address\n          "), offset);
+	  if (first)
+	    printf (" [%6tx] ", offset);
+	  else
+	    printf ("          ");
+	  puts (gettext ("base address"));
+	  printf ("          ");
 	  print_dwarf_addr (dwflmod, address_size, end, end);
 	  printf ("\n");
 	  base = end;
+	  first = false;
 	}
       else if (begin == 0 && end == 0) /* End of list entry.  */
 	{
@@ -11082,7 +11165,7 @@ print_debug (Dwfl_Module *dwflmod, Ebl *ebl, GElf_Ehdr *ehdr)
     };
   if (dbg == NULL)
     {
-      if ((print_debug_sections & ~section_exception) != 0)
+      if ((print_debug_sections & ~(section_exception|section_frame)) != 0)
 	error (0, 0, gettext ("cannot get debug context descriptor: %s"),
 	       dwfl_errmsg (-1));
       dbg = &dummy_dbg;

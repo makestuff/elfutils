@@ -311,12 +311,18 @@ make_directories (const char *path)
   if (lastslash == path)
     return;
 
-  char *dir = strndupa (path, lastslash - path);
+  char *dir = strndup (path, lastslash - path);
+  if (dir == NULL)
+    error(EXIT_FAILURE, errno, _("memory exhausted"));
+
   while (mkdir (dir, 0777) < 0 && errno != EEXIST)
-    if (errno == ENOENT)
-      make_directories (dir);
-    else
-      error (EXIT_FAILURE, errno, _("cannot create directory '%s'"), dir);
+    {
+      if (errno == ENOENT)
+        make_directories (dir);
+      else
+        error (EXIT_FAILURE, errno, _("cannot create directory '%s'"), dir);
+    }
+  free (dir);
 }
 
 /* Keep track of new section data we are creating, so we can free it
@@ -500,7 +506,8 @@ adjust_relocs (Elf_Scn *outscn, Elf_Scn *inscn, const GElf_Shdr *shdr,
 	  error (EXIT_FAILURE, 0, "Symbol table cannot have zero sh_entsize");
 	const size_t nsym = symshdr->sh_size / symshdr->sh_entsize;
 	const size_t onent = shdr->sh_size / shdr->sh_entsize;
-	assert (data->d_size == shdr->sh_size);
+	if (data->d_size != shdr->sh_size)
+	  error (EXIT_FAILURE, 0, "HASH section has inconsistent size");
 
 #define CONVERT_HASH(Hash_Word)						      \
 	{								      \
@@ -509,7 +516,8 @@ adjust_relocs (Elf_Scn *outscn, Elf_Scn *inscn, const GElf_Shdr *shdr,
 	  const size_t nchain = old_hash[1];				      \
 	  const Hash_Word *const old_bucket = &old_hash[2];		      \
 	  const Hash_Word *const old_chain = &old_bucket[nbucket];	      \
-	  assert (onent == 2 + nbucket + nchain);			      \
+	  if (onent != 2 + nbucket + nchain)				      \
+	    error (EXIT_FAILURE, 0, "HASH section has inconsistent entsize"); \
 									      \
 	  const size_t nent = 2 + nbucket + nsym;			      \
 	  Hash_Word *const new_hash = xcalloc (nent, sizeof new_hash[0]);     \
@@ -2469,8 +2477,7 @@ match_module (Dwfl_Module *mod,
       const char *file;
       const char *check = dwfl_module_info (mod, NULL, NULL, NULL,
 					    NULL, NULL, &file, NULL);
-      assert (check == name);
-      if (file == NULL)
+      if (check == NULL || strcmp (check, name) != 0 || file == NULL)
 	return DWARF_CB_OK;
 
       name = file;

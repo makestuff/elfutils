@@ -71,7 +71,6 @@ static const struct
   { x86_64_init, "elf_x86_64", "x86_64", 6, EM_X86_64, ELFCLASS64, ELFDATA2LSB },
   { ppc_init, "elf_ppc", "ppc", 3, EM_PPC, ELFCLASS32, ELFDATA2MSB },
   { ppc64_init, "elf_ppc64", "ppc64", 5, EM_PPC64, ELFCLASS64, ELFDATA2MSB },
-  { NULL, "elf_tilegx", "tilegx", 6, EM_TILEGX, ELFCLASS64, ELFDATA2LSB },
   // XXX class and machine fields need to be filled in for all archs.
   { NULL, "elf_sh", "sh", 2, EM_SH, 0, 0 },
   { NULL, "ebl_arm", "arm", 3, EM_ARM, 0, 0 },
@@ -80,6 +79,7 @@ static const struct
   { NULL, "elf_sparcv8plus", "sparc", 5, EM_SPARC32PLUS, 0, 0 },
   { s390_init, "ebl_s390", "s390", 4, EM_S390, 0, 0 },
 
+  { NULL, "elf_tilegx", "tilegx", 6, EM_TILEGX, ELFCLASS64, ELFDATA2LSB },
   { NULL, "elf_m32", "m32", 3, EM_M32, 0, 0 },
   { NULL, "elf_m68k", "m68k", 4, EM_68K, ELFCLASS32, ELFDATA2MSB },
   { NULL, "elf_m88k", "m88k", 4, EM_88K, 0, 0 },
@@ -206,8 +206,6 @@ static ssize_t default_register_info (Ebl *ebl,
 				      const char **prefix,
 				      const char **setname,
 				      int *bits, int *type);
-static int default_syscall_abi (Ebl *ebl, int *sp, int *pc,
-				int *callno, int args[6]);
 static bool default_check_object_attribute (Ebl *ebl, const char *vendor,
 					    int tag, uint64_t value,
 					    const char **tag_name,
@@ -251,7 +249,6 @@ fill_defaults (Ebl *result)
   result->bss_plt_p = default_bss_plt_p;
   result->return_value_location = default_return_value_location;
   result->register_info = default_register_info;
-  result->syscall_abi = default_syscall_abi;
   result->check_object_attribute = default_check_object_attribute;
   result->check_reloc_target_type = default_check_reloc_target_type;
   result->disasm = NULL;
@@ -680,20 +677,6 @@ default_register_info (Ebl *ebl __attribute__ ((unused)),
   *bits = -1;
   *type = DW_ATE_void;
   return snprintf (name, namelen, "reg%d", regno);
-}
-
-static int
-default_syscall_abi (Ebl *ebl __attribute__ ((unused)),
-		     int *sp, int *pc, int *callno, int args[6])
-{
-  *sp = *pc = *callno = -1;
-  args[0] = -1;
-  args[1] = -1;
-  args[2] = -1;
-  args[3] = -1;
-  args[4] = -1;
-  args[5] = -1;
-  return -1;
 }
 
 static bool

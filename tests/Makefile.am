@@ -63,7 +63,7 @@ check_PROGRAMS = arextract arsymtest newfile saridx scnnames sectiondump \
 		  all-dwarf-ranges unit-info next_cfi \
 		  elfcopy addsections xlate_notes elfrdwrnop \
 		  dwelf_elf_e_machine_string \
-		  getphdrnum
+		  getphdrnum leb128 read_unaligned
 
 asm_TESTS = asm-tst1 asm-tst2 asm-tst3 asm-tst4 asm-tst5 \
 	    asm-tst6 asm-tst7 asm-tst8 asm-tst9
@@ -80,13 +80,19 @@ backtrace-child-biarch$(EXEEXT): backtrace-child.c
 		     $(AM_LDFLAGS) $(LDFLAGS) $(backtrace_child_LDFLAGS) \
 		     -o $@ $<
 
+if GCOV
+GCOV_FLAGS=-fprofile-arcs -ftest-coverage
+else
+GCOV_FLAGS=
+endif
+
 # test_nlist checks its own symbol table, and expects various symbols
 # to be in the order as specified in the source file. Explicitly set
 # minimal CFLAGS
 test-nlist$(EXEEXT): test-nlist.c
 	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	  $(AM_CPPFLAGS) $(CPPFLAGS) \
-	  $(test_nlist_CFLAGS) $(test_nlist_LDADD) -o $@ $<
+	  $(test_nlist_CFLAGS) $(GCOV_FLAGS) -o $@ $< $(test_nlist_LDADD)
 
 TESTS = run-arextract.sh run-arsymtest.sh run-ar.sh newfile test-nlist \
 	update1 update2 update3 update4 \
@@ -118,6 +124,7 @@ TESTS = run-arextract.sh run-arsymtest.sh run-ar.sh newfile test-nlist \
 	run-readelf-test4.sh run-readelf-twofiles.sh \
 	run-readelf-macro.sh run-readelf-loc.sh run-readelf-ranges.sh \
 	run-readelf-aranges.sh run-readelf-line.sh run-readelf-z.sh \
+	run-readelf-frames.sh \
 	run-readelf-n.sh \
 	run-native-test.sh run-bug1-test.sh \
 	run-debuglink.sh run-debugaltlink.sh run-buildid.sh \
@@ -176,7 +183,8 @@ TESTS = run-arextract.sh run-arsymtest.sh run-ar.sh newfile test-nlist \
 	run-dwelf_elf_e_machine_string.sh \
 	run-elfclassify.sh run-elfclassify-self.sh \
 	run-pt_gnu_prop-tests.sh \
-	run-getphdrnum.sh
+	run-getphdrnum.sh run-test-includes.sh \
+	leb128 read_unaligned
 
 if !BIARCH
 export ELFUTILS_DISABLE_BIARCH = 1
@@ -195,6 +203,10 @@ if LZMA
 TESTS += run-readelf-s.sh run-dwflsyms.sh
 endif
 
+if HAVE_ZSTD
+TESTS += run-readelf-compressed-zstd.sh
+endif
+
 if HAVE_LIBASM
 check_PROGRAMS += $(asm_TESTS)
 TESTS += $(asm_TESTS) run-disasm-bpf.sh
@@ -202,7 +214,10 @@ endif
 
 if DEBUGINFOD
 check_PROGRAMS += debuginfod_build_id_find
+# With the dummy delegation doesn't work
+if !DUMMY_LIBDEBUGINFOD
 TESTS += run-debuginfod-find.sh
+endif
 endif
 
 EXTRA_DIST = run-arextract.sh run-arsymtest.sh run-ar.sh \
@@ -244,6 +259,7 @@ EXTRA_DIST = run-arextract.sh run-arsymtest.sh run-ar.sh \
 	     run-nm-syms.sh testfilesyms32.bz2 testfilesyms64.bz2 \
 	     run-nm-self.sh run-readelf-self.sh run-readelf-info-plus.sh \
 	     run-readelf-compressed.sh \
+	     run-readelf-compressed-zstd.sh \
 	     run-readelf-const-values.sh testfile-const-values.debug.bz2 \
 	     run-addrcfi.sh run-dwarfcfi.sh \
 	     testfile11-debugframe.bz2 testfile12-debugframe.bz2 \
@@ -302,12 +318,14 @@ EXTRA_DIST = run-arextract.sh run-arsymtest.sh run-ar.sh \
 	     testfile-dwzstr.bz2 testfile-dwzstr.multi.bz2 \
 	     run-readelf-addr.sh run-readelf-str.sh \
 	     run-readelf-types.sh \
+	     run-readelf-frames.sh \
 	     run-readelf-n.sh \
 	     testfile-gnu-property-note.bz2 testfile-gnu-property-note.o.bz2 \
 	     testfile_gnu_props.32le.o.bz2 \
 	     testfile_gnu_props.64le.o.bz2 \
 	     testfile_gnu_props.32be.o.bz2 \
 	     testfile_gnu_props.64be.o.bz2 \
+	     testfile-gnu-property-note-aarch64.bz2 \
 	     run-allfcts-multi.sh \
 	     test-offset-loop.bz2 test-offset-loop.alt.bz2 \
 	     run-prelink-addr-test.sh \
@@ -348,7 +366,7 @@ EXTRA_DIST = run-arextract.sh run-arsymtest.sh run-ar.sh \
 	     run-macro-test.sh testfile-macinfo.bz2 testfile-macros.bz2 \
 	     run-elf_cntl_gelf_getshdr.sh \
 	     run-test-archive64.sh testarchive64.a.bz2 \
-	     testfile60.bz2 testfile61.bz2 \
+	     testfile61.bz2 \
 	     run-readelf-vmcoreinfo.sh testfile62.bz2 \
 	     run-readelf-mixed-corenote.sh testfile63.bz2 testfile64.bz2 \
 	     testfile65.bz2 testfile67.bz2 testfile68.bz2 \
@@ -494,7 +512,8 @@ EXTRA_DIST = run-arextract.sh run-arsymtest.sh run-ar.sh \
 	     debuginfod-tars/pacman-sources/hello.c \
 	     run-pt_gnu_prop-tests.sh \
 	     testfile_pt_gnu_prop.bz2 testfile_pt_gnu_prop32.bz2 \
-	     run-getphdrnum.sh testfile-phdrs.elf.bz2
+	     run-getphdrnum.sh testfile-phdrs.elf.bz2 \
+	     run-test-includes.sh
 
 
 if USE_VALGRIND
@@ -675,6 +694,8 @@ xlate_notes_LDADD = $(libelf)
 elfrdwrnop_LDADD = $(libelf)
 dwelf_elf_e_machine_string_LDADD = $(libelf) $(libdw)
 getphdrnum_LDADD = $(libelf) $(libdw)
+leb128_LDADD = $(libelf) $(libdw)
+read_unaligned_LDADD = $(libelf) $(libdw)
 
 # We want to test the libelf header against the system elf.h header.
 # Don't include any -I CPPFLAGS. Except when we install our own elf.h.
